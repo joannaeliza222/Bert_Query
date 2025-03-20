@@ -1,0 +1,14 @@
+Flask
+Flask-CORS
+Flask-SQLAlchemy
+Flask-Migrate
+Flask-RESTful
+psycopg2-binary
+transformers
+torch
+numpy
+pandas
+scikit-learn
+gunicorn
+werkzeug
+python-dotenv
