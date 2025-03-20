@@ -1,0 +1,242 @@
+/* General Styling */
+body {
+    font-family: Arial, sans-serif;
+    background-color: rgb(236, 234, 234);
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+.logo img {
+    background-color: white;
+    padding: 10px;
+    border-radius: 8px;
+    display: flex;
+}
+
+/* Navbar */
+.navbar {
+    background-color: #333333;    
+}
+
+
+/* Flash Messages */
+.flash-message {
+    margin: 10px 0;
+    padding: 10px;
+    border-radius: 1px;
+    color: #fff;
+    text-align: center;
+}
+
+.flash-message.info { background-color: #2196F3; }
+.flash-message.warning { background-color: #FF9800; }
+.flash-message.success { background-color: #4CAF50; }
+.flash-message.danger { background-color: #f44336; }
+
+
+
+/* .nav-right a:not(:last-child)::after {
+    content: "|";
+    margin-left: 10px;
+    color: #ffffff; 
+} */
+
+.footer-nav a {
+    color: #fff;
+    text-decoration: underline;
+}
+
+
+/* .search-section {
+    margin-right: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+} */
+
+/* .right-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+} */
+
+input[type="text"], input[type="file"], select, button {
+    width: 97%;
+    padding: 10px;
+    margin-top: 5px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+}
+
+.related-questions-box {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    padding: 20px;
+    margin-top: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+
+.btn-custom:hover {
+    background-color: #0b0b16;
+    color: white;
+
+}
+
+.btn-custom {
+    margin: 10px;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-size: 16px;
+    
+}
+.btn-primary {
+    background-color: #000;
+    border: none;
+}
+.btn-outline-primary {
+    border: 2px solid #000;
+    color: #000;
+}
+
+
+
+
+
+.btn-sand {
+    background: linear-gradient(to right, sandybrown, rgb(245, 152, 71));
+    cursor: pointer;
+    transition: background 0.3s ease-in-out;
+}
+
+.btn-sand:hover {
+    background: linear-gradient(to right, rgb(245, 152, 71), sandybrown);
+}
+
+
+.table {
+    background-color: white;
+    box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.table th, .table td {
+    text-align: center;
+    vertical-align: middle;
+}
+
+
+
+/* Small Screens (Phones) */
+@media (max-width: 576px) {
+    .nav
+    .logo img {
+        height: 40px;
+    }
+    .pricing-card {
+        padding: 20px;
+    }
+    .btn-custom {
+        width: 90px;
+        font-size: 14px;
+    }
+}
+
+/* Medium Screens (Tablets) */
+@media (max-width: 768px) {
+    .pricing-card {
+        margin-bottom: 20px;
+    }
+    .btn-custom {
+        width: 100px;
+    }
+}
+
+/* Large Screens (Laptops & Desktops) */
+@media (min-width: 992px) {
+    .container {
+        max-width: 80%;
+    }
+}
+
+.btn {
+    width: 150px; 
+    height: 150px;
+    border-radius: 100%;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #000000;
+    font-weight: bolder;
+    transition: transform 0.3s ease;
+}
+
+
+.btn-sand:hover {
+    border-width: 2px;
+    color: #000000;
+    transform: scale(1.10);
+}
+
+
+
+.pbtn-primary {
+    background-color: #000;
+    border: none;
+}
+
+.pbtn {
+    margin: 10px;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-size: 16px;
+    color: white;
+}
+
+
+
+.faq-container {
+    width: 80%;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.btn-container {
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.faq-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.faq-logo {
+    width: 40px;
+    height: auto;
+}
+
+.faq-item h2 {
+    display: block;
+}
