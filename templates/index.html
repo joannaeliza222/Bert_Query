@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Management System</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+
+</head>
+<body>
+    
+    <!-- Navigation Bar -->
+    <div>
+        <nav class="navbar navbar-expand-lg bg-body-tertiary">
+            <div class="container-fluid">
+                <a class="logo" href="{{ url_for('index') }}"><img src="{{ url_for('static', filename='logo.png') }}" alt="Top Logo"></a>
+                <h1 class = "position-absolute start-50 translate-middle-x text-white m-0">Audit Management System</h1>       
+                <div class="navbar-nav ms-auto">         
+                    <a class="nav-link text-white" href="{{ url_for('index') }}">Home</a>
+                    <a class="nav-link text-white" href="{{ url_for('pending') }}">Pending</a>
+                    <a class="nav-link text-white" href="{{ url_for('replied') }}">Replied</a>          
+                </div>
+            </div>
+        </nav> 
+    </div>
+
+<div class="container">
+    <h1 class="text-align-left">Hi, 
+        <span style="color: rgba(227, 177, 92, 1);">Welcome!</span>
+    </h1>
+</div>
+
+<div class="container">
+        <div class="row">
+            <!-- Card 1 -->
+            <div class="col-md-6">
+                <div class="btn-container row">
+                    <div class="col-md-6">
+                        <div class="text-center p-4">
+                            <h3>Pending Queries</h3>
+                            <ul class="list-styled">
+                                <li>View unanswered queries</li>
+                                <li>Upload unanswered queries</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <a href="/pending" class="btn btn-sand">View</a>
+                    </div>
+                </div>
+            </div>
+            <!-- Card 2 -->
+            <div class="col-md-6">
+                <div class="btn-container row">
+                    <div class="col-md-6">
+                        <div class="text-center p-4">
+                            <h3>Replied Queries</h3>
+                            <ul class="list-styled">
+                                <li>Search replied queries</li>
+                                <li>Upload replied queries</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <a href="/replied" class="btn btn-sand">View</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+</div>
+
+
+<!-- Count -->
+
+<section class="faq-container mt-4">
+    <div class="row mt-4 text-center">
+        <div class="faq-item col-md-4">
+            <img src="{{ url_for('static', filename='5.png') }}" alt="Logo" class="faq-logo">
+            <h5>Total Questions</h5>
+            <h2>{{ total_questions }}</h2>
+        </div>
+        <div class="faq-item col-md-4">
+            <img src="{{ url_for('static', filename='4.jpg') }}" alt="Logo" class="faq-logo">
+            <h5>Unanswered Questions</h5>
+            <h2>{{ unanswered_questions }}</h2>
+        </div>
+        <div class="faq-item col-md-4">
+            <img src="{{ url_for('static', filename='3.png') }}" alt="Logo" class="faq-logo">
+            <h5>Total States</h5>
+            <h2>{{ total_states }}</h2>
+        </div>
+    </div>
+</section>
+
+
+
+
+<!-- Table -->
+<div class="container">
+    <h2 class="mt-4 text-center">Questions Per State</h2>
+    <table class="table table-bordered mt-3">
+        <thead class="table-dark">
+            <tr>
+                <th>State</th>
+                <th>Total Questions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for state, count in state_wise_count %}
+            <tr>
+                <td>{{ state }}</td>
+                <td>{{ count }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <!-- Bar Chart -->
+
+    <div class="container">
+        <canvas id="questionsPerStateChart"></canvas>
+    </div>
+
+</div>
+
+<script>
+
+var states = [];
+var questionCounts = [];
+
+{% for state, count in state_wise_count %}
+    states.push("{{ state }}");
+    questionCounts.push({{ count }});
+{% endfor %}
+
+// Create the Bar Chart
+var ctx = document.getElementById('questionsPerStateChart').getContext('2d');
+new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: states,
+        datasets: [{
+            label: 'Total Questions',
+            data: questionCounts,
+            backgroundColor: '#4CAF50',
+            borderColor: '#333',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+</script>
+
+</body>
+</html>
+
+

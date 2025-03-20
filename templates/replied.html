@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Management System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
+    <script src="{{ url_for('static', filename='scripts.js') }}"></script>
+</head>
+<body>
+<!-- Navigation Bar -->
+<div>
+    <nav class="navbar navbar-expand-lg bg-body-tertiary">
+        <div class="container-fluid">
+            <a class="logo" href="{{ url_for('index') }}"><img src="{{ url_for('static', filename='logo.png') }}" alt="Top Logo"></a>
+            <h1 class = "position-absolute start-50 translate-middle-x text-white m-0">Audit Management System</h1>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link text-white" href="{{ url_for('index') }}">Home</a>
+                <a class="nav-link text-white" href="{{ url_for('pending') }}">Pending</a>
+                <a class="nav-link active text-white" href="{{ url_for('replied') }}">Replied</a>  
+            </div>
+        </div>
+    </nav>
+</div>
+
+
+<!-- Main Content -->
+<div class="container">
+    <div class="main-content row">
+        <!-- Left Side: Search Section -->
+        <div class="search-section col-md-6">
+            <h2>Search Related Query</h2>
+            <form method="POST" action="{{ url_for('replied') }}">
+                <input type="text" name="question" placeholder="Search for related query">
+                <input type="text" name="reply" placeholder="Search for related reply">
+                <div class="row">
+                    <div class="col-md-6">
+                        <input  type="text" name="memo_id" placeholder="Search by Memo ID">
+                    </div>
+                    <div class="dropdown col-md-6" name="state_name">   
+                        <select name="state_name">
+                            <option value="">Select State</option>
+                            {% for state in distinct_states %}
+                                <option value="{{ state[0] }}">{{ state[0] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                
+                </div>
+                <div class="d-flex gap-3">
+                    <button type="submit">Search</button>
+                    <button type="button" onclick="clearFields()">Clear</button>
+                </div>
+            </form>
+            <div class="related-questions-box" id="related-questions-box">
+                {% if related_questions %}
+                    {% for question, reply, memo_id, state_name in related_questions %}
+                        <div class="related-question">
+                            <li><strong>Question:</strong> {{ question }}
+                                <p><strong>Reply:</strong> {{ reply }}</p>
+                                <p><strong>Memo ID:</strong> {{ memo_id }}</p>
+                                <p><strong>State:</strong> {{ state_name }}</p></li>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="flash-messages">
+                            {% for category, message in messages %}
+                                <div class="flash-message {{ category }}">{{ message }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    {% endwith %}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Right Side: Add and Upload Sections -->
+        <div class="right-container btn-container col-md-6">
+            <!-- Add Question Section -->
+            <div class="add-section">
+                <h2>Add New Question</h2>
+                <form method="POST" action="{{ url_for('add_question') }}">
+                    <input type="text" name="new_question" placeholder="New Question" required>
+                    <input type="text" name="new_reply" placeholder="Reply">
+                    <div class="twobuttonadd-container">
+                        <input type="text" name="memo_id" placeholder="Memo ID">
+                        <input type="text" name="state_name" placeholder="State Name">
+                    </div>
+                    <button type="submit">Add Question</button>
+                </form>
+            </div>
+            <!-- Upload File Section -->
+            <div class="upload-section">
+                <h2>Upload FAQ File</h2>
+                <form method="POST" action="{{ url_for('upload_file') }}" enctype="multipart/form-data">
+                    <input type="file" name="file" required>
+                    <button type="submit">Upload</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+</body>
+</html>
