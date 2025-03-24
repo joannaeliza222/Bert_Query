@@ -9,15 +9,22 @@ from sqlalchemy import or_
 from transformers import AutoTokenizer, AutoModel
 from dotenv import load_dotenv
 from waitress import serve
-
+from datetime import datetime
+import logging
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 # Load environment variables from .env file
 load_dotenv()
 
+# Configure logging
+if not os.path.exists('logs'):
+    os.makedirs('logs')
 
-#app = Flask(__name__)
+logging.basicConfig(
+    filename='logs/app.log', level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), 'templates'),
             static_folder=os.path.join(os.path.dirname(__file__), 'static'))
@@ -39,6 +46,9 @@ class FAQ(db.Model):
     reply = db.Column(db.String, nullable=True)
     memo_id = db.Column(db.String, nullable=True)
     state_name = db.Column(db.String, nullable=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (db.UniqueConstraint('question', 'state_name', name='uq_question_state'),)
 
 # Load BERT tokenizer and model
 tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
@@ -135,7 +145,7 @@ def pending():
                         state_name = row.get('state_name', None)
 
                         if question:
-                            if not FAQ.query.filter_by(question=question).first():
+                            if not FAQ.query.filter_by(question=question, state_name=state_name).first():
                                 new_entry = FAQ(question=question, memo_id=memo_id, state_name=state_name)
                                 db.session.add(new_entry)
                                 merged_count += 1
@@ -214,6 +224,7 @@ def add_question():
         db.session.add(new_entry)
         db.session.commit()
         flash('Question added successfully!', 'success')
+        logging.info(f'Question added manually: "{question}" with reply "{reply}" for state "{state_name}"')
 
     return redirect(url_for('replied'))
 
@@ -258,7 +269,7 @@ def upload_file():
                     state_name = row.get('state_name', '')
 
                     if isinstance(question, str) and isinstance(reply, str):
-                        if not FAQ.query.filter_by(question=question).first():
+                        if not FAQ.query.filter_by(question=question, state_name=state_name).first():
                             new_entry = FAQ(question=question, reply=reply, memo_id=memo_id, state_name=state_name)
                             db.session.add(new_entry)
                             merged_count += 1
@@ -267,6 +278,8 @@ def upload_file():
 
                 db.session.commit()
                 flash(f'{merged_count} questions merged and {duplicate_count} duplicates found!', 'success')
+                logging.info(f'File {filename} processed: {merged_count} new questions added, {duplicate_count} duplicates')
+            
             else:
                 flash('Invalid file format! The file must contain "question" and "reply" columns.', 'danger')
 
@@ -279,5 +292,4 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     #app.run(debug=True,host='0.0.0.0', port=int(os.getenv('PORT', 5000)))
-
     serve(app, host="0.0.0.0", port=int(os.getenv('PORT', 5000)))
