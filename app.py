@@ -78,15 +78,22 @@ def find_related_questions(question, reply, memo_id, state_name):
         query_embedding = get_bert_embeddings(query_text)
         faqs = query.all()
 
+        similarity_scores = []
+        
         for faq in faqs:
 
             db_text = faq.question if question else faq.reply
             db_embedding = get_bert_embeddings(db_text)
-            similarity_score = cosine_similarity(query_embedding, db_embedding)
+            similarity_score = cosine_similarity(query_embedding, db_embedding)[0][0]
 
             if similarity_score > 0.75:  # Adjust threshold
-                related_questions.append((faq.question, faq.reply, faq.memo_id, faq.state_name))
-
+                similarity_scores.append((faq, similarity_score))
+                #related_questions.append((faq.question, faq.reply, faq.memo_id, faq.state_name))
+        
+        # Sort related questions by similarity score (highest first)
+        similarity_scores.sort(key=lambda x: x[1], reverse=True)
+        related_questions = [(faq.question, faq.reply, faq.memo_id, faq.state_name) for faq, _ in
+                             similarity_scores]
     else:
         faqs = query.all()
         for faq in faqs:
@@ -103,6 +110,8 @@ def fetch_data():
         state_wise_count = db.session.query(FAQ.state_name, db.func.count(FAQ.id)).group_by(FAQ.state_name).all()
         return total_questions, total_states, unanswered_questions, state_wise_count
 
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
 
 # Routes
@@ -193,15 +202,21 @@ def pending():
 @app.route('/replied', methods=['GET', 'POST'])
 def replied():
     related_questions = []
-    distinct_states = FAQ.query.with_entities(FAQ.state_name).distinct().all()
-
+    distinct_states = FAQ.query.with_entities(FAQ.state_name).distinct().order_by(FAQ.state_name).all()
+    keyword = None
+    
     if request.method == 'POST':
         user_question = request.form.get('question', '').strip()
         user_reply = request.form.get('reply', '').strip()
         memo_id = request.form.get('memo_id', '').strip()
         state_name = request.form.get('state_name', '').strip()
 
-        if user_question or user_reply or memo_id or state_name:
+        if keyword:
+            query = FAQ.query.filter(FAQ.reply.ilike(f"%{keyword}%"))
+            related_questions = [(faq.question, faq.reply, faq.memo_id, faq.state_name) for faq in query.all()]
+            print(f"Found {len(related_questions)} results for keyword: {keyword}")  
+
+        elif user_question or user_reply or memo_id or state_name:
             related_questions = find_related_questions(user_question, user_reply, memo_id, state_name)
             if not related_questions:
                 flash("No similar questions or replies found. Would you like to add this?", 'info')
@@ -217,8 +232,8 @@ def add_question():
     question = request.form['new_question']
     reply = request.form['new_reply']
 
-    if FAQ.query.filter_by(question=question).first():
-        flash('Question already exists!', 'warning')
+    if FAQ.query.filter_by(question=question, state_name=state_name).first():
+        flash('Question already exists for this state!', 'warning')
     else:
         new_entry = FAQ(memo_id=memo_id, question=question, reply=reply, state_name=state_name)
         db.session.add(new_entry)
@@ -227,9 +242,6 @@ def add_question():
         logging.info(f'Question added manually: "{question}" with reply "{reply}" for state "{state_name}"')
 
     return redirect(url_for('replied'))
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
 @app.route('/clear', methods=['POST'])
 def clear():
