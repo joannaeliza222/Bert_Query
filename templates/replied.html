@@ -55,6 +55,25 @@
                     <button type="button" onclick="clearFields()">Clear</button>
                 </div>
             </form>
+            
+            <div class="related_count" id="related_count">
+                {% if related_questions %}
+                <p>Related questions found:{{ related_count }}</p>
+                {% endif %}
+            </div>
+
+            <form class="download_result" id="download_result" method="POST" action="{{ url_for('replied') }}">
+                <input type="hidden" name="question" value="{{ request.form.get('question','') }}">
+                <input type="hidden" name="reply" value="{{ request.form.get('reply','') }}">
+                <input type="hidden" name="memo_id" value="{{ request.form.get('memo_id','') }}">
+                <input type="hidden" name="state_name" value="{{ request.form.get('state_name','') }}">
+                <input type="hidden" name="keyword" value="{{ keyword }}">
+                <input type="hidden" name="download" value="true">
+                {% if related_questions %}
+                    <button type="submit" class="pbtn btn-primary">Download Results</button>
+                {% endif %}
+            </form>
+
             <div class="related-questions-box" id="related-questions-box">
                 {% if related_questions %}
                     {% for question, reply, memo_id, state_name in related_questions %}
@@ -102,10 +121,43 @@
                     <button type="submit">Upload</button>
                 </form>
             </div>
+            <div class="download_template mt-4">
+                <h2>Download Excel Template</h2>
+                <a href="{{ url_for('download_template') }}" class="pbtn btn-success">Download Excel Template</a>
+            </div>
         </div>
     </div>
 </div>
 
+    <footer class="text-light py-4 mt-4" style="background-color: #333333;">
+    <div class="container-fluid">
+        <div class="row">
+
+            <div class="col-md-4 text-center text-md-start">
+                <p class="small">Designed and Developed by <br> Jo-Anna</p>
+            </div>
+
+            <div class="col-md-4 text-center">
+                <h5>Quick Links</h5>
+                <ul class="list-unstyled">
+                    <li><a href="#" class="text-light text-decoration-none">Home</a></li>
+                    <li><a href="#" class="text-light text-decoration-none">Version 1.0</a></li>
+                </ul>
+            </div>
+
+
+            <div class="col-md-4 text-center text-md-end">
+                <h5>Follow Us</h5>
+                <ul class="list-unstyled">
+                    <li><a href="#" class="text-light me-3">Contact Us</a></li>
+                    <li><a href="#" class="text-light me-3">Privacy Policy</a></li>
+                </ul>
+            </div>
+        </div>
+        <hr class="text-light border-white">
+        <p class="text-center small">&#169; 2025. All rights reserved.</p>
+    </div>
+</footer>
 
 </body>
 </html>
