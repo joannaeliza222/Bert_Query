@@ -12,6 +12,7 @@ from waitress import serve
 from datetime import datetime
 import logging
 import warnings
+from openpyxl import Workbook, load_workbook
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 # Load environment variables from .env file
@@ -54,6 +55,8 @@ class FAQ(db.Model):
 tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
 model = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
 
+df = pd.DataFrame(columns=["question", "reply", "memo_id", "state_name"])
+df.to_excel("static/faq_template.xlsx", index=False)
 
 def get_bert_embeddings(text):
     """Get BERT embeddings for a given text."""
@@ -66,7 +69,6 @@ def get_bert_embeddings(text):
 def find_related_questions(question, reply, memo_id, state_name):
     """Find related questions or replies from the database."""
     related_questions = []
-
     query = FAQ.query
 
     if memo_id:
@@ -210,6 +212,8 @@ def replied():
         user_reply = request.form.get('reply', '').strip()
         memo_id = request.form.get('memo_id', '').strip()
         state_name = request.form.get('state_name', '').strip()
+        keyword = request.form.get('keyword', '').strip()
+        download = request.form.get('download', '') == 'true'
 
         if keyword:
             query = FAQ.query.filter(FAQ.reply.ilike(f"%{keyword}%"))
@@ -222,6 +226,16 @@ def replied():
                 flash("No similar questions or replies found. Would you like to add this?", 'info')
         else:
             flash("Please enter a question, reply, memo ID, or state name to search.", 'warning')
+
+        if download and related_questions:
+            df = pd.DataFrame(related_questions, columns=["question", "reply", "memo_id", "state_name"])
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df.to_excel(writer, index=False)
+            output.seek(0)
+
+            return send_file(output, as_attachment=True, download_name="related_questions.xlsx",
+                             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
     return render_template('replied.html', related_questions=related_questions, distinct_states=distinct_states)
 
@@ -246,6 +260,25 @@ def add_question():
 @app.route('/clear', methods=['POST'])
 def clear():
     return redirect('/')
+
+TEMPLATE_SECRET = "UPLOAD-VALID-123"
+
+@app.route('/download-template')
+def download_template():
+    """Provide a downloadable Excel template with a hidden secret."""
+    wb = Workbook()
+    ws = wb.active
+    ws.append(["question", "reply", "memo_id", "state_name"])
+
+    wb.properties.comments = TEMPLATE_SECRET  # Hidden secret for validation
+    wb.save("faq_template.xlsx")
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return send_file(output, as_attachment=True, download_name="faq_template.xlsx",
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 @app.route('/upload', methods=['GET', 'POST'])
 def upload_file():
