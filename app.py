@@ -1,10 +1,10 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from sklearn.metrics.pairwise import cosine_similarity
 from flask_sqlalchemy import SQLAlchemy
 import torch
 import pandas as pd
 import os
-from werkzeug.utils import secure_filename
+from werkzeug.utils import secure_filename, send_file
 from sqlalchemy import or_
 from transformers import AutoTokenizer, AutoModel
 from dotenv import load_dotenv
@@ -13,6 +13,10 @@ from datetime import datetime
 import logging
 import warnings
 from openpyxl import Workbook, load_workbook
+from sqlalchemy import or_
+from functools import wraps
+from werkzeug.security import generate_password_hash, check_password_hash
+from models import db, User
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 # Load environment variables from .env file
@@ -41,6 +45,15 @@ app.config['ALLOWED_EXTENSIONS'] = {'xls', 'xlsx', 'csv'}
 db = SQLAlchemy(app)
 
 # Database Model
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password = db.Column(db.String(200), nullable=False)
+    role = db.Column(db.String(50))
+    state_name = db.Column(db.String(100))
+    is_approved = db.Column(db.Boolean, default=False)
+    
 class FAQ(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     question = db.Column(db.String, unique=True, nullable=False)
@@ -51,6 +64,12 @@ class FAQ(db.Model):
 
     __table_args__ = (db.UniqueConstraint('question', 'state_name', name='uq_question_state'),)
 
+class PendingUser(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password = db.Column(db.String(200), nullable=False)
+    requested_on = db.Column(db.DateTime, default=datetime.utcnow)
+    
 # Load BERT tokenizer and model
 tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
 model = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
@@ -58,6 +77,26 @@ model = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
 df = pd.DataFrame(columns=["question", "reply", "memo_id", "state_name"])
 df.to_excel("static/faq_template.xlsx", index=False)
 
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please log in to access this page.', 'warning')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+# Admin Required Decorator
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user = User.query.get(session['user_id'])
+        if user.role != 'admin':
+            flash("Admin access required")
+            return redirect(url_for('home'))
+        return f(*args, **kwargs)
+    return decorated_function
+    
 def get_bert_embeddings(text):
     """Get BERT embeddings for a given text."""
     inputs = tokenizer(text, return_tensors='pt', padding=True, truncation=True, max_length=512)
@@ -117,18 +156,80 @@ def allowed_file(filename):
 
 
 # Routes
-@app.route('/')
+
+@app.route('/', methods=['GET', 'POST'])
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+        user = User.query.filter_by(email=email).first()
+        if user and check_password_hash(user.password, password):
+            if user.is_approved:
+                session['user_id'] = user.id
+                return redirect(url_for('index'))
+            else:
+                flash("Awaiting admin approval")
+                return redirect(url_for('login'))
+        else:
+            flash("Invalid credentials")
+            return redirect(url_for('login'))
+    return render_template('login.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+        role = request.form['role']  # viewer or modifier
+        state = request.form['state_name']
+        hashed_pw = generate_password_hash(password)
+        if User.query.filter_by(email=email).first():
+            flash("Email already registered")
+            return redirect(url_for('register'))
+        new_user = User(email=email, password=hashed_pw, role=role, state_name=state)
+        db.session.add(new_user)
+        db.session.commit()
+        flash("Registered successfully. Awaiting admin approval.")
+        return redirect(url_for('login'))
+    return render_template('register.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    session.clear()
+    flash('Logged out successfully.', 'info')
+    return redirect(url_for('login'))
+
+@app.route('/index')
+@login_required
 def index():
+    user = db.session.get(User, session['user_id'])
     total_questions, total_states, unanswered_questions, state_wise_count = fetch_data()
+    if user.role == 'admin':
+        pending_users = User.query.filter_by(is_approved=False).all()
+        return render_template('index.html', user=user, pending_users=pending_users, total_questions=total_questions, total_states=total_states,
+                           unanswered_questions=unanswered_questions, state_wise_count=state_wise_count,
+                           username=session.get('username'), role=session.get('role'))
+
     return render_template('index.html', total_questions=total_questions, total_states=total_states,
-                           unanswered_questions=unanswered_questions, state_wise_count=state_wise_count)
+                           unanswered_questions=unanswered_questions, state_wise_count=state_wise_count,
+                           username=session.get('username'), role=session.get('role'), user=user)
 
 # Route to display and manage pending questions
 @app.route('/pending', methods=['GET', 'POST'])
+@login_required
 def pending():
+    user = db.session.get(User, session['user_id'])
+    role = user.role
+    state_name = user.state_name
+
+    if role == 'admin':
+        states = [row[0] for row in db.session.execute(db.text("SELECT DISTINCT state_name FROM faq WHERE state_name IS NOT NULL"))]
+    else:
+        states = [state_name]
+        
     if request.method == 'POST':
-        memo_id = request.form.get('memo_id', '').strip()
-        state_name = request.form.get('state_name', '').strip()
         if 'file' in request.files:
             file = request.files['file']
             if file.filename == '':
@@ -166,7 +267,7 @@ def pending():
                     db.session.commit()
                     flash(f'{merged_count} questions merged and {duplicate_count} duplicates found!', 'success')
                 else:
-                    flash('Invalid file format! The file must contain "question" ', 'danger')
+                    flash('Invalid file format! Missing "question" column.', 'danger')
             else:
                 flash('File type not allowed!', 'danger')
 
@@ -191,17 +292,20 @@ def pending():
     selected_state = request.args.get('state', '')
     # Fetch pending questions (questions without replies or with empty replies)
     query = FAQ.query.filter(or_(FAQ.reply.is_(None), FAQ.reply == ''))
-    if selected_state:
+    if role in ['modifier', 'viewer']:
+        query = query.filter(FAQ.state_name == state_name)
+    elif role == 'admin' and selected_state:
         query = query.filter(FAQ.state_name == selected_state)
 
     pending_questions = query.all()
     print("Pending Questions:", pending_questions) 
 
     return render_template('pending.html', questions=pending_questions, distinct_states=distinct_states,
-                           selected_state=selected_state)
+                           selected_state=selected_state, states=states, username=user.email, role=role)
 
 
 @app.route('/replied', methods=['GET', 'POST'])
+@login_required
 def replied():
     related_questions = []
     distinct_states = FAQ.query.with_entities(FAQ.state_name).distinct().order_by(FAQ.state_name).all()
@@ -237,7 +341,7 @@ def replied():
             return send_file(output, as_attachment=True, download_name="related_questions.xlsx",
                              mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
-    return render_template('replied.html', related_questions=related_questions, distinct_states=distinct_states)
+    return render_template('replied.html', related_questions=related_questions, distinct_states=distinct_states, related_count=len(related_questions))
 
 @app.route('/add', methods=['POST'])
 def add_question():
@@ -338,3 +442,4 @@ if __name__ == '__main__':
         db.create_all()
     #app.run(debug=True,host='0.0.0.0', port=int(os.getenv('PORT', 5000)))
     serve(app, host="0.0.0.0", port=int(os.getenv('PORT', 5000)))
+
