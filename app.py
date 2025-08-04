@@ -437,9 +437,43 @@ def upload_file():
     return redirect(url_for('replied'))
 
 
+@app.route('/admin/approvals', methods=['GET', 'POST'])
+@login_required
+def admin_approvals():
+    if session.get('role') != 'admin':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        user_id = request.form['user_id']
+        role = request.form['role']
+        pending = PendingUser.query.get(user_id)
+        if pending:
+            new_user = User(email=pending.email, password=pending.password, role=role)
+            db.session.add(new_user)
+            db.session.delete(pending)
+            db.session.commit()
+            flash(f'User {new_user.email} approved.', 'success')
+
+    pending_users = PendingUser.query.all()
+    return render_template('admin_approvals.html', users=pending_users)
+
+
+@app.route('/approve/<int:user_id>')
+@admin_required
+def approve_user(user_id):
+    user = db.session.get(User, user_id)
+    if user:
+        user.is_approved = True
+        db.session.commit()
+        flash("User approved successfully")
+    return redirect(url_for('index'))
+
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     #app.run(debug=True,host='0.0.0.0', port=int(os.getenv('PORT', 5000)))
     serve(app, host="0.0.0.0", port=int(os.getenv('PORT', 5000)))
+
 
