@@ -30,18 +30,25 @@ Perfect for organizations handling large volumes of policy, legal, procurement, 
 ## 📁 Folder Structure
 
 query-management-system/
+
 ├── app.py
+
 ├── templates/
+
 ├── static/
+
 ├── uploads/
+
 ├── logs/
+
 ├── .env.example
+
 └── requirements.txt
 
 ## ⚙️ Setup Instructions
 
-### 1. Clone the repository
 ```bash
+### 1. Clone the repository
 git clone https://github.com/joannaeliza222/Query_Management_System.git
 cd query-management-system
 
@@ -53,7 +60,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 ### 4. Create and configure .env file
-cp .env.example .env  (Fill in your actual database URL, secret key, etc.)
+cp .env.example .env  (Fill your actual database URL, secret key, etc.)
 
 ### 5.Run the application
 python app.py
